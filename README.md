@@ -85,3 +85,71 @@ For reference, ImVoteNet gives around 63 mAP@0.25.
 ## LICENSE
 
 The code is released under the [MIT license](LICENSE).
+
+
+## 如何在windows10上跑通
+1.无法编译pointnet2问题
+- 尽量使用以上 readme 给的环境
+- 若跟笔者一样使用NVIDIA 3080（或其他30系列显卡），必须安装CUDA11，然后按照下main的链接来修改代码，再编译。
+链接：[votenet中找到的解决方案](https://github.com/facebookresearch/votenet/issues/108)
+  。如下：
+  ```
+  Found a fix:
+
+    1. change all instances of AT_CHECK to TORCH_CHECK inside all the source files inside pointnet2/_ext_src/src and pointnet2/_ext_src/include. This is due to an API change in PyTorch.
+    2. change pointnet2/setup.py:
+  ```
+  ```
+      # Copyright (c) Facebook, Inc. and its affiliates.
+    # 
+    # This source code is licensed under the MIT license found in the
+    # LICENSE file in the root directory of this source tree.
+    
+    from setuptools import setup
+    from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+    import glob
+    import os
+    
+    _ext_src_root = "_ext_src"
+    _ext_sources = glob.glob("{}/src/*.cpp".format(_ext_src_root)) + glob.glob(
+        "{}/src/*.cu".format(_ext_src_root)
+    )
+    _ext_headers = glob.glob("{}/include/*".format(_ext_src_root))
+    
+    headers = "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), '_ext_src', 'include')
+    
+    setup(
+        name='pointnet2',
+        ext_modules=[
+            CUDAExtension(
+                name='pointnet2._ext',
+                sources=_ext_sources,
+                extra_compile_args={
+                    "cxx": ["-O2", headers],
+                    "nvcc": ["-O2", headers]
+                },
+            )
+        ],
+        cmdclass={
+            'build_ext': BuildExtension
+        }
+    )
+  ```
+  
+2.编译时遇到cl：xxxx的问题
+- 安装vs2019，安装时选择c++就行，不用.NET等
+- 把安装完后的vs2019的cl.exe所在的目录放到电脑的环境变量中
+
+3.遇到utf-8的问题
+- windows下将cpp_extension.py文件中的
+```
+match = re.search(r'(\d+)\.(\d+)\.(\d+)', compiler_info.decode().strip())
+```
+改为
+```
+match = re.search(r'(\d+)\.(\d+)\.(\d+)', compiler_info.decode('gbk').strip())
+```
+
+4.SUN-RGBD数据集获取：
+- 使用MATLAB2020b，其他版本（如MATLAB2016b)会出错
+- 拷入U盘备份
